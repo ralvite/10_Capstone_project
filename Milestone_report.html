@@ -214,6 +214,42 @@ cleanData = encodingASCII(paste(newsData, blogsData, twitterData))
 lang = &quot;en&quot; 
 vs &lt;- VectorSource(cleanData)
 corpus.sample &lt;- VCorpus(vs, readerControl=list(readPlain, language=lang, load=TRUE))</code></pre>
+<div id="basics-summaries-of-files" class="section level3">
+<h3>Basics summaries of files</h3>
+<pre class="r"><code>fileInformation &lt;- function(filepath) {
+  size &lt;- file.info(filepath)$size/1048576
+
+  conn &lt;- file(filepath, &quot;r&quot;)
+  fulltext &lt;- readLines(conn, encoding=&quot;UTF-16LE&quot;)
+  nlines &lt;- length(fulltext)
+  
+  maxline &lt;- 0
+  for (i in 1:nlines) {
+    linelength &lt;- nchar(fulltext[i])
+    if (linelength &gt; maxline) { maxline &lt;- linelength }
+  }
+  close(conn)
+  
+  infotext &lt;- paste0(&quot;File: &quot;, filepath, &quot;, &quot;,
+                     &quot;size: &quot;, sprintf(&quot;%.1f&quot;, size), &quot; MB, &quot;,
+                     &quot;number of lines: &quot;, nlines, &quot;, &quot;,
+                     &quot;max line length: &quot;, maxline, &quot; characters&quot;)
+  
+  # create a list with object properties to access them
+  list(size=size, nlines=nlines, maxline=maxline, infotext=infotext)
+}
+
+blog_info &lt;- fileInformation(paste0(raw_data_dir,&quot;en_US.blogs.txt&quot;))
+news_info &lt;- fileInformation(paste0(raw_data_dir,&quot;en_US.news.txt&quot;))
+twit_info &lt;- fileInformation(paste0(raw_data_dir,&quot;en_US.twitter.txt&quot;))
+
+blog_info$infotext</code></pre>
+<pre><code>## [1] &quot;File: ./data_raw/final/en_US/en_US.blogs.txt, size: 200.4 MB, number of lines: 899288, max line length: 40835 characters&quot;</code></pre>
+<pre class="r"><code>news_info$infotext</code></pre>
+<pre><code>## [1] &quot;File: ./data_raw/final/en_US/en_US.news.txt, size: 196.3 MB, number of lines: 77259, max line length: 5760 characters&quot;</code></pre>
+<pre class="r"><code>twit_info$infotext</code></pre>
+<pre><code>## [1] &quot;File: ./data_raw/final/en_US/en_US.twitter.txt, size: 159.4 MB, number of lines: 2360148, max line length: 213 characters&quot;</code></pre>
+</div>
 <div id="data-preprocessing" class="section level3">
 <h3>Data preprocessing</h3>
 <p><strong>Transformations</strong> operate on each text document in a text document collection by applying a function to them. Thus we obtain another representation of the whole text document collection. The <code>tm</code> package provides several function to carry out these tasks, which are applied to the document collection as transformations via the <code>tm_map()</code> function wich is an interface to apply transformations (mappings) to corpora. A list of available transformations can be obtained with getTransformations(), and the mostly used ones are as.PlainTextDocument(), removeNumbers(), removePunctuation(), removeWords(), stemDocument() and stripWhitespace(). A function removeURL() is defined above to remove hyperlinks, where pattern “http[[:alnum:]]*” matches strings starting with <strong>http</strong> and then followed by any number of alphabetic characters and digits. Strings matching this pattern are removed with gsub(). After that, the corpus needs a couple of transformations, including changing letters to lower case, and removing punctuations, numbers, extra white spaces and stop words. The general English stop-word list is applied. In addition hyperlinks and non alphanumeric characters are also removed.</p>
