@@ -1,0 +1,101 @@
+---
+title: "Data Science Specialization - Capstone Project - Quiz 1"
+author: "Ramiro Alvite Diaz"
+date: "2018-03-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE)
+```
+
+```{r message=FALSE}
+library(tm)
+library(tidytext)
+```
+
+#### 1. The en_US.blogs.txt file is how many megabytes?
+#### The en_US.twitter.txt has how many lines of text?
+#### What is the length of the longest line seen in any of the three en_US data sets? 
+
+
+```{r}
+data_dir <- "data_raw/"
+fileInformation <- function(filepath) {
+  size <- file.info(filepath)$size/1048576
+
+  conn <- file(filepath, "r")
+  fulltext <- readLines(conn, encoding="UTF-16LE")
+  nlines <- length(fulltext)
+  
+  maxline <- 0
+  for (i in 1:nlines) {
+    linelength <- nchar(fulltext[i])
+    if (linelength > maxline) { maxline <- linelength }
+  }
+  close(conn)
+  
+  infotext <- paste0("File: ", filepath, ", ",
+                     "size: ", sprintf("%.1f", size), " MB, ",
+                     "number of lines: ", nlines, ", ",
+                     "max line length: ", maxline, " characters")
+  
+  # create a list with object properties to access them
+  list(size=size, nlines=nlines, maxline=maxline, infotext=infotext)
+}
+
+blog_info <- fileInformation(paste0(data_dir,"final/en_US/en_US.blogs.txt"))
+news_info <- fileInformation(paste0(data_dir,"final/en_US/en_US.news.txt"))
+twit_info <- fileInformation(paste0(data_dir,"final/en_US/en_US.twitter.txt"))
+
+blog_info$infotext
+news_info$infotext
+twit_info$infotext
+```
+
+#### In the en_US twitter data set, if you divide the number of lines where the word "love" (all lowercase) occurs by the number of lines the word "hate" (all lowercase) occurs, about what do you get?
+
+```{r}
+conn <- file("data_raw/final/en_US/en_US.twitter.txt", "r")
+love_matches <- grepl(".love.", tolower(readLines(conn)))
+sum(love_matches)
+# 105935
+conn <- file("data_raw/final/en_US/en_US.twitter.txt", "r")
+hate_matches <- grepl(".hate.", tolower(readLines(conn)))
+sum(hate_matches)
+# 24059
+
+105935/24059
+# 4.403134
+```
+
+
+#### The one tweet in the en_US twitter data set that matches the word "biostats" says what?
+
+```{r}
+conn <- file("data_raw/final/en_US/en_US.twitter.txt", "r")
+fulltweettext <- tolower(readLines(conn))
+biostat_matches <- grepl(".biostat.", fulltweettext)
+sum(biostat_matches)
+
+fulltweettext[biostat_matches]
+
+```
+
+
+
+```{r}
+conn <- file("data_raw/final/en_US/en_US.twitter.txt", "r")
+fulltweettext <- readLines(conn)
+sentence_matches <- grepl("A computer once beat me at chess, but it was no match for me at kickboxing", fulltweettext)
+sum(sentence_matches)
+
+close(conn)
+```
+
+
+
+
+
+
+

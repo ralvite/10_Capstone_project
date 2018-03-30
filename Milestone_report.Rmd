@@ -1,0 +1,316 @@
+---
+title: "Data Science Specialization - Capstone Project - Milestone project"
+author: "Ramiro Alvite Diaz"
+date: "2018-03-29"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE, message = FALSE, warning = FALSE)
+```
+
+```{r echo= FALSE}
+library(tm)
+library(tidytext)
+library(RWeka)
+```
+
+## Overview
+
+In this capstone we will be applying data science in the area of natural language processing.
+
+Dataset
+
+The data is from a corpus called HC Corpora.
+
+After extracting the downloaded zip file, we end up with four sets of three files:
+
+* aa_AA.blogs.txt: text obtained from blogs
+* aa_AA.news.txt: text obtained from news feeds
+* aa_AA.twitter.txt: text obtained from Twitter
+
+Where aa_AA denotes language and locale and is either `de_DE` (German), `en_US` (English, US), `fi_FI` (Finnish) or `ru_RU` (Russian).
+
+[Capstone dataset](https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip)
+
+```{r eval=FALSE}
+# url <- "https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip"
+# #dir.create("./data_raw")
+# f <- file.path(getwd(), "./data_raw/Coursera-SwiftKey.zip")
+# download.file(url, f)
+# unzip(f)
+```
+
+## Tasks to accomplish
+
+1. The first step is to import these texts into one's favorite computing environment, in our case R and organize and structure the texts to be able to access them in a uniform manner
+2. Transformation. The second step is tidying up the texts, including preprocessing the texts to obtain a convenient representation for later analysis. This step might involve
+    * lowercase conversion
+    * removing punctuation marks
+    * removing numbers
+    * text reformatting (e.g., extra whitespace removal)
+    * stopword removal
+    * stemming procedures
+3. Transform the preprocessed texts into structured formats to be actually computed with. For classical text mining tasks, this normally implies the creation of a so-called term-document matrix
+4. Wwork and compute on texts with standard techniques from statistics and data mining, like clustering or classification methods
+
+Thus there is a need for a conceptual entity similar to a database holding and managing text documents in a generic way: we call this entity a text **document collection** or **corpus**
+
+
+## Data load
+We start with the creation of a text document collection holding some plain texts. In order to speed up data exploration and prototyping, a single source is considered when loading documents into the text document collection (Corpus), selecting 10k random lines from blog entries from english locale.
+
+```{r}
+raw_data_dir <- "./data_raw/final/en_US/"
+samplingFile <- function(filename, prob) {
+    incon <- file(paste(raw_data_dir, "en_US.", filename, ".txt",sep=""),"r")
+    file <- readLines(incon)
+    # sampling by rbinom()
+    set.seed(123)
+    sample_file <- file[rbinom(n = length(file), size = 1, prob = prob) == 1]
+    close(incon)
+    
+    # Write out the sample file to the local file to save it
+    outCon <- file(paste(raw_data_dir, "sample_", filename, ".txt",sep=""), "w")
+    writeLines(sample_file, con = outCon)
+    close(outCon)
+}
+
+samplingFile("blogs", 0.02)
+samplingFile("news", 0.1)
+samplingFile("twitter", 0.01)
+
+# remove non-ASCII encoding
+text_file <- paste(raw_data_dir,"sample_news.txt",sep = "")
+conn <- conn <- file(text_file, "r")
+newsData <- readLines(conn)
+close(conn)
+
+text_file <- paste(raw_data_dir,"sample_blogs.txt",sep = "")
+conn <- conn <- file(text_file, "r")
+blogsData <- readLines(conn)
+close(conn)
+
+
+text_file <- paste(raw_data_dir,"sample_twitter.txt",sep = "")
+conn <- conn <- file(text_file, "r")
+twitterData <- readLines(conn)
+close(conn)
+
+
+encodingASCII <- function(inputData, print=FALSE){
+    inputData <- lapply(inputData, function(row) iconv(row, "latin1", "ASCII", sub="")) 
+    return(unlist(inputData))
+}
+
+cleanData = encodingASCII(paste(newsData, blogsData, twitterData))
+
+# create VCorpus
+lang = "en" 
+vs <- VectorSource(cleanData)
+corpus.sample <- VCorpus(vs, readerControl=list(readPlain, language=lang, load=TRUE))
+```
+
+
+```{r echo=FALSE}
+
+# text_file <- paste(raw_data_dir,"en_US.twitter.txt",sep = "")
+# lang = "en" 
+# # numer of lines of sample
+# nlines <- 2360148 #2360148 is the number of lines
+# 
+# createCorpus <- function(text_file,nlines,lang) {
+#   # open the file, read the nlines and
+#   # load each element of vector (i.e. lines in file) as a document
+#   conn <- file(text_file, "r")
+#   fulltext <- readLines(conn,nlines)
+#   close(conn)
+# 
+#   vs <- VectorSource(fulltext)
+#   corpus.sample <- VCorpus(vs, readerControl=list(readPlain, language=lang, load=TRUE))
+# }
+
+# corpus.sample <- createCorpus(text_file,nlines,lang)
+
+
+
+```
+
+
+### Data preprocessing
+
+**Transformations** operate on each text document in a text document collection by applying a function to them. Thus we obtain another representation of the whole text document collection. The `tm` package provides several function to carry out these tasks, which are applied to the document collection as transformations via the `tm_map()` function wich is an interface to apply transformations (mappings) to corpora. A list of available transformations can be obtained with getTransformations(), and the mostly used ones are as.PlainTextDocument(), removeNumbers(), removePunctuation(), removeWords(), stemDocument() and stripWhitespace(). A function removeURL() is defined above to remove hyperlinks, where pattern "http[[:alnum:]]\*" matches strings starting with **http** and then followed by any number of alphabetic characters and digits. Strings matching this pattern are removed with gsub(). After that, the corpus needs a couple of transformations, including changing letters to lower case, and removing punctuations, numbers, extra white spaces and stop words. The general English stop-word list is applied. In addition hyperlinks and non alphanumeric characters are also removed.
+
+
+```{r}
+# to lowercase
+corpus.sample <- tm_map(corpus.sample, content_transformer(tolower))
+
+# remove URL
+removeURL <- function(x) gsub("http[^[:space:]]*", "", x)
+corpus.sample <- tm_map(corpus.sample, content_transformer(removeURL))
+
+# remove extra whitespaces
+corpus.sample <- tm_map(corpus.sample, stripWhitespace)
+# remove punctuations
+corpus.sample <- tm_map(corpus.sample, removePunctuation)
+# remove numbers
+corpus.sample <- tm_map(corpus.sample, removeNumbers)
+
+
+
+# remove anything other than English letters or space
+removeNoiseChars <- function(x) gsub("[^[:alpha:][:space:]]", "", x)
+corpus.sample <- tm_map(corpus.sample, content_transformer(removeNoiseChars))
+
+# stopword removal
+corpus.sample <- tm_map(corpus.sample, removeWords, stopwords("english"))
+```
+
+In many applications, words need to be stemmed to retrieve their radicals, so that various forms derived from a stem would be taken as the same when counting word frequency. This can be achieved with `stemDocument()` function.
+
+```{r}
+corpus.sample <- tm_map(corpus.sample, stemDocument)
+```
+
+
+### Data exploration
+
+Firstly, we have a look at the documents numbered 11 to 15 in the built corpus.
+
+```{r}
+inspect(corpus.sample[11:15])
+```
+
+One of the simplest analysis methods in text mining is based on count-based evaluation. This means that those terms with the highest occurrence frequencies in a text are rated important.  
+
+#### Building a Document Term Matrix
+
+A term-document matrix represents the relationship between terms and documents, where each row stands for a term and each column for a document, and an entry is the number of occurrences of the term in the document. It can be exported from a Corpus and is used as a bag-of-words mechanism which means that the order of tokens is irrelevant.
+
+```{r cache=TRUE}
+TDM <- TermDocumentMatrix(corpus.sample)
+TDM
+```
+
+As we can see from the above result, the term-document matrix is composed of 22764 terms and 10k documents. It is very sparse, near 100% of the entries being zero. Since there are too many terms, the size of a term-document matrix can be reduced by selecting terms that appear in a minimum number of documents, or filtering terms with TF-IDF (term frequency-inverse document frequency) [Wu et al., 2008].
+
+```{r}
+TDM <- removeSparseTerms(TDM, sparse = 0.95)
+TDM
+```
+
+Now the sparcity has been reduced to 90% aproximately as well the number of terms (90).  
+
+#### Frequent terms and associations
+
+In the code below, the function `findFreqTerms()` finds frequent terms with frequency more than a given thereshold. Note that they are ordered alphabetically, instead of by frequency or popularity.
+
+```{r}
+TDMHighFreq <- findFreqTerms(TDM, lowfreq = 50)
+sort(TDMHighFreq)
+```
+
+To show the top frequent words visually, we next make a barplot for them. From the termdocument matrix, we can derive the frequency of terms with `rowSums()` function. Then we select terms that appears in ten or more documents and shown them with a barplot using package `ggplot2`.
+
+```{r}
+# top frequent number
+N <- 10
+m <- as.matrix(TDM)
+m_dim <- dim(m)
+topTokens <- sort(rowSums(m), decreasing=TRUE)[1:N]
+topTokens
+
+```
+
+The matrix elements are term frequencies. The resulting matrix dimension is `r dim(m)`. The reason of its large dimension is the extremely sparse internal structure since most combinations of documents and terms are zero.  
+
+```{r}
+library(reshape2)
+library(ggplot2)
+
+dfplot <- as.data.frame(melt(topTokens))
+dfplot$token <- dimnames(dfplot)[[1]]
+dfplot$token <- factor(dfplot$token,
+                      levels=dfplot$token[order(dfplot$value,
+                                               decreasing=TRUE)])
+
+fig <- ggplot(dfplot, aes(x=token, y=value)) + geom_bar(stat="identity")
+fig <- fig + xlab("token in Corpus")
+fig <- fig + ylab("Count")
+fig <- fig + coord_flip()
+print(fig)
+```
+
+
+
+```{r eval=FALSE, echo=FALSE}
+# We can also find what are highly associated with a word with function findAssocs(). Below we try to find terms associated with "time" with correlation no less than 0.1,0.2,0.5
+
+# wich words are associated with top words
+
+words <- c("time", "one")
+corr <- c(0.1, 0.2, 0.5)
+
+# returns a list
+my_assocs <- findAssocs(TDM, words, corr)
+
+# turns list into a list of named dataframes.
+my_list <- lapply(my_assocs, function(x) data.frame(terms = names(x), cor = x, stringsAsFactors = FALSE))
+my_list
+
+```
+
+#### 2-gram tockens extraction
+
+The next step is to evaluate the most frequent two-grams (pairs of words that appear together). To construct the term-document matrix for two-grams the `NGramTokenizer()` function from the RWeka package is used as a control term to the DocumentTermMatrix function.
+```{r cache=TRUE}
+N <- 10
+BigramTokenizer <- function(x) NGramTokenizer(x, Weka_control(min = 2, max = 2))
+TDM2 <- TermDocumentMatrix(corpus.sample, control = list(tokenize = BigramTokenizer))
+# remove sparse terms
+TDM2 <- removeSparseTerms(TDM2, sparse = 0.998)
+TDM2
+m2 <- as.matrix(TDM2)
+m2_dim <- dim(m2)
+topTokens2gram <- sort(rowSums(m2), decreasing=TRUE)[1:N]
+
+dfplot2 <- as.data.frame(melt(topTokens2gram))
+dfplot2$token <- dimnames(dfplot2)[[1]]
+dfplot2$token <- factor(dfplot2$token,
+                      levels=dfplot2$token[order(dfplot2$value,
+                                               decreasing=TRUE)])
+
+fig2 <- ggplot(dfplot2, aes(x=token, y=value)) + geom_bar(stat="identity")
+fig2 <- fig2 + xlab("2-gram token in Corpus")
+fig2 <- fig2 + ylab("Count")
+fig2 <- fig2 + coord_flip()
+print(fig2)
+
+```
+
+
+#### Clustering words
+
+The final step in our data exploratory analysis is to find clusters of words using hierarchical clustering. Sparse terms are removed in previous step, so that the plot of clustering will not be crowded with words. Then the distances between terms are calculated with `dist()` after scaling. After that, the terms are clustered with `hclust()` and the
+dendrogram is cut into 10 clusters. The agglomeration method is set to ward, which denotes the increase in variance when two clusters are merged.
+
+```{r}
+HClust <- hclust(dist(scale(m)), method = "ward.D")
+
+# plot the cluster
+plot(HClust)
+# cut tree into 10 clusters
+rect.hclust(HClust, k=10)
+(groups <- cutree(HClust, k=10))
+```
+
+
+### Next steps
+
+The next tasks to accomplish will be building a n-gram model for predicting the next word based on the previous 1, 2, or 3 words and another to handle unseen n-grams, and finally building the Shiny app to interact with. 
+
+
+
+
+

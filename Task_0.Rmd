@@ -1,0 +1,436 @@
+---
+title: "Data Science Specialization - Capstone Project"
+author: "Ramiro Alvite Diaz"
+date: "2018-03-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
+```
+
+## Understanding the problem
+
+The first step in analyzing any new data set is figuring out: (a) what data you have and (b) what are the standard tools and models used for that type of data. Make sure you have downloaded the data from Coursera before heading for the exercises. This exercise uses the files named LOCALE.blogs.txt where LOCALE is the each of the four locales en_US, de_DE, ru_RU and fi_FI. The data is from a corpus called HC Corpora. See the About the Corpora reading for more details. The files have been language filtered but may still contain some foreign text.
+
+In this capstone we will be applying data science in the area of natural language processing. As a first step toward working on this project, you should familiarize yourself with Natural Language Processing, Text Mining, and the associated tools in R. Here are some resources that may be helpful to you.
+
+[Natural language processing Wikipedia page](https://en.wikipedia.org/wiki/Natural_language_processing)  
+[Text mining infrastucture in R](http://www.jstatsoft.org/v25/i05/)  
+[CRAN Task View: Natural Language Processing](http://cran.r-project.org/web/views/NaturalLanguageProcessing.html)  
+[Coursera course on NLP (not in R)](https://www.coursera.org/course/nlp)  
+
+Dataset
+
+This is the training data to get you started that will be the basis for most of the capstone. You must download the data from the Coursera site and not from external websites to start.
+
+[Capstone dataset](https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip)
+
+```{r eval=FALSE}
+url <- "https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip"
+#dir.create("./data_raw")
+f <- file.path(getwd(), "./data_raw/Coursera-SwiftKey.zip")
+download.file(url, f)
+unzip(f)
+```
+
+
+Your original exploration of the data and modeling steps will be performed on this data set. Later in the capstone, if you find additional data sets that may be useful for building your model you may use them.
+
+Tasks to accomplish
+
+Obtaining the data - Can you download the data and load/manipulate it in R?
+Familiarizing yourself with NLP and text mining - Learn about the basics of natural language processing and how it relates to the data science process you have learned in the Data Science Specialization.
+
+Questions to consider
+
+* What do the data look like?
+* Where do the data come from?
+* Can you think of any other data sources that might help you in this project?
+* What are the common steps in natural language processing?
+* What are some common issues in the analysis of text data?
+* What is the relationship between NLP and the concepts you have learned in the Specialization?
+
+## Common steps in NLP
+
+1. the first step is to import these texts into one's favorite computing environment, in our case R and organize and structure the texts to be able to access them in a uniform manner
+2. Transformation. The second step is tidying up the texts, including preprocessing the texts to obtain a convenient representation for later analysis. This step might involve
+    * text reformatting (e.g., whitespace removal)
+    * stopword removal
+    * stemming procedures
+3. Third, the analyst must be able to transform the preprocessed texts into structured formats to be actually computed with. For classical text mining tasks, this normally implies the creation of a so-called term-document matrix, probably the most common format to represent texts for computation
+4. Now the analyst can work and compute on texts with standard techniques from statistics and data mining, like clustering or classification methods
+
+Thus there is a need for a conceptual entity similar to a database holding and managing text documents in a generic way: we call this entity a text **document collection** or **corpus**
+
+## Data structures
+
+### Text document collections (TDC)
+Denoted as **Corpus** in linguistics.  
+It represents a collection of text documents and can be interpreted as a database for texts.
+
+### Text document
+It's the basic unit managed by a text document collection. It is an abstract class, i.e., we must derive specific document classes to obtain document types we actually use in daily text mining.
+
+### Text repositories
+used to keep track of text document collections. The class TextRepository is conceptualized for storing representations of the same text document collection. This allows to backtrack transformations on text documents and access the original input data if desired or necessary.
+
+### Term-document matrices
+the most common way of representing texts for further computation. It can be exported from a Corpus and is used as a bag-of-words mechanism which means that the order of tokens is irrelevant. This approach results in a matrix with document IDs as rows and terms as columns. The matrix elements are term frequencies.
+
+### Sources
+the concept of a so-called source to encapsulate and abstract the document input process. This allows to work with standardized interfaces within the package without knowing the internal structures of input document formats.
+Main types:
+
+* DirSource: for directories with text documents
+* VectorSource: each element of vector (i.e. lines in a file) as a document
+* CSVSource: for documents stored in CSV 
+* ReutersSource: for special Reuters file formats
+* GmaneSource: for so-called RSS feeds as delivered by Gmane
+
+
+## Algorithms
+We start with the creation of a text document collection holding some plain texts
+
+```{r}
+# Since the documents reside in a separate directory we use the DirSource
+# and ask for immediate loading into memory. The elements in the collection are of class
+# PlainTextDocument since we use the default reader which reads in the documents as plain
+# text:
+txt <- system.file("texts", "txt", package = "tm")
+ovid <- Corpus(DirSource(txt),
+            readerControl = list(reader = readPlain,
+                language = "la", # "en_US" ...
+                load = TRUE),
+            # activate database support 
+            # such that only relevant information is kept in memory
+            dbControl = list(useDb = TRUE,
+                dbName = "/home/user/oviddb",
+                dbType = "DB1")
+        )
+# A text document collection with 5 text documents
+```
+
+### Accessing and setting the TDC information
+
+```{r}
+ID(ovid[[1]])
+# [1] "1"
+# gives the ID slot attribute of the first ovid document.
+
+Author(ovid[[1]]) <- "Publius Ovidius Naso"
+# Modify the Author slot information
+
+# To see all available metadata for a text document, use meta()
+meta(ovid[[1]])
+```
+
+### Subsetting a TDC
+
+```{r}
+# [ The subset operator allows to specify a range of text documents and automatically ensures
+# that a valid text collection is returned. Further the DMetaData data frame is
+# automatically subsetted to the specific range of documents.
+ovid[1:3]
+# A text document collection with 3 text documents
+
+#[[ accesses a single text document in the collection.
+ovid[[1]]
+```
+
+### Exloratory TDC
+
+```{r}
+show()
+# A custom print method. Instead of printing all text documents (consider a text
+# collection could consist of several thousand documents, similar to a database), only a short summarizing message is printed.
+
+summary(ovid)
+# A more detailed message, summarizing the text document collection. Available
+# metadata is listed.
+
+inspect(ovid)
+# inspect() This function allows to actually see the structure which is hidden by show() and # summary() methods. Thus all documents and metadata are printed.
+
+tmUpdate(ovid, DirSource(txt))
+# The source is checked for new files and add them to the TDC
+
+```
+
+### Text documents additions
+Text documents (class TextDocument) and metadata can be added to text document collections with `appendElem()` and `appendMeta()`, respectively.
+
+```{r}
+ovid <- appendElem(ovid, data = ovid[[1]], list(clust = 1))
+```
+
+
+### Transformations
+**Transformations** operate on each text document in a text document collection by applying a function to them. Thus we obtain another representation of the whole text document collection.
+
+```{r}
+# Transformations are done via the tmMap()
+tmMap(ovid, FUN = tmTolower)
+# Generic transform and filter operations on a TDC
+# ------------------------------------------------
+# Transformation Description
+# asPlain() Converts the document to a plain text document
+# loadDoc() Triggers load on demand
+# removeCitation() Removes citations from e-mails
+# removeMultipart() Removes non-text from multipart e-mails
+# removeNumbers() Removes numbers
+# removePunctuation() Removes punctuation marks
+# removeSignature() Removes signatures from e-mails
+# removeWords() Removes stopwords
+# replaceWords() Replaces a set of words with a given phrase
+# stemDoc() Stems the text document
+# stripWhitespace() Removes extra whitespace
+# tmTolower() Conversion to lower case letters
+```
+
+### Filter and search
+**Filter** operations instead allow to identify subsets of the text document collection.
+
+```{r}
+# Filters are performed via tmIndex() and tmFilter() functions
+# Both function have the same internal behavior except that tmIndex()
+# returns Boolean values whereas tmFilter() returns the corresponding documents in a new Corpus
+tmFilter(ovid, FUN = searchFullText, "Venus", doclevel = TRUE)
+#  searchFullText accepts regexp
+
+# Filter using metadata tags
+tmIndex(ovid, "identifier == '2'")
+# document metadata tags available: author, datetimestamp, description, identifier, origin, language and heading
+```
+
+
+## Preprocessing
+### Data import
+
+### Convert to plain text
+
+```{r}
+rdevel <- tmMap(rdevel, asPlain)
+```
+
+
+### Stemming
+
+Stemming is the process of erasing word sufixes to retrieve their radicals.
+
+```{r}
+acq[[10]]
+# [1] "Gulf Applied Technologies Inc said it sold its subsidiaries engaged in"
+# [2] "pipeline and terminal operations for 12.2 mln dlrs. The company said"
+
+stemDoc(acq[[10]])
+# [1] "Gulf Appli Technolog Inc said it sold it subsidiari engag in pipelin"
+# [2] "and termin oper for 12.2 mln dlrs. The compani said the sale is"
+```
+
+### Whitespace elimination and lower case conversion
+
+Another two common preprocessing steps are the removal of white space and the conversion to lower case. For both tasks tm provides transformations (and thus can be used with tmMap())
+
+```{r}
+stripWhitespace(acq[[10]])
+tmTolower(acq[[10]])
+```
+
+### Stopword removal
+
+Stopwords are words that are so common in a language that their information value is almost zero, in other words their entropy is very low.
+
+```{r}
+# set up a tiny list of stopwords
+mystopwords <- c("and", "for", "in", "is", "it", "not", "the", "to")
+# Stopword removal has also been wrapped as a transformation for convenience:
+removeWords(acq[[10]], mystopwords)
+
+# A whole collection can be transformed by using transformations:
+tmMap(acq, removeWords, mystopwords)
+
+# For real application one would typically use a purpose tailored a language specific stopword list:
+# stopwords(language = ...)
+tm_map(acq, removeWords, stopwords("english")) 
+```
+
+### Synonyms
+
+```{r}
+library("wordnet")
+synonyms("company")
+# [1] "caller" "companionship" "company" "fellowship"
+# Once we have the synonyms for a word a common approach is to replace all synonyms by a
+# single word. This can be done via the replaceWords() transformation
+replaceWords(acq[[10]], synonyms(dict, "company"), by = "company")
+# and for the whole collection, using tmMap():
+tmMap(acq, replaceWords, synonyms(dict, "company"), by = "company")
+```
+
+### Part of speech tagging
+
+```{r}
+library("openNLP")
+tagPOS(acq[[10]])
+# [1] "Gulf/NNP Applied/NNP Technologies/NNPS Inc/NNP said/VBD it/PRP sold/VBD"
+# [2] "its/PRP$ subsidiaries/NNS engaged/VBN in/IN pipeline/NN and/CC"
+# shows the tagged words using a set of predefined tags identifying nouns, verbs, adjectives,
+# adverbs, et cetera depending on their context in the text.
+```
+
+## Applications
+
+### Count based evaluation
+One of the simplest analysis methods in text mining is based on count-based evaluation. This means that those terms with the highest occurrence frequencies in a text are rated important.  
+At first we create a term-document matrix for the crude data set, where rows correspond to
+documents IDs and columns to terms.
+
+```{r}
+crudeTDM <- TermDocMatrix(crude, control = list(stopwords = TRUE))
+```
+
+we use a function on term-document matrices that returns terms that occur at least freq times (=10).
+
+```{r}
+crudeTDMHighFreq <- findFreqTerms(crudeTDM, 10, Inf)
+# [1] "oil" "opec" "kuwait"
+```
+
+We also get the frequencies of the high occurrence terms for each document:
+
+```{r}
+# Data(crudeTDM)[1:10, crudeTDMHighFreq]
+# 10 x 3 sparse Matrix of class "dgCMatrix"
+# oil opec kuwait
+# 127 5 . .
+# 144 12 15 .
+# 191 2 . .
+# 194 1 . .
+# 211 1 . .
+# 236 7 8 10
+# 237 4 1 .
+# 242 3 2 1
+# 246 5 2 .
+# 248 9 6 3
+```
+
+### Finding associations for a given term
+
+This is especially interesting when analyzing a text for a specific purpose.
+
+```{r}
+# extract associations of the term "oil" from the Reuters articles with at least 0:85 correlation in the termdocument matrix:
+findAssocs(crudeTDM, "oil", 0.85)
+# oil opec
+# 1.00 0.87
+```
+
+### Simple text clustering
+
+#### Hierarchical clustering
+
+```{r}
+# Common similarity measures in
+# text mining are Metric Distances, Cosine Measure, Pearson Correlation and Extended Jaccard
+# Similarity
+# So we could easily use as distance measure
+# the Cosine for our crude term-document matrix
+dissimilarity(crudeTDM, method = "cosine")
+
+# we could compute the Cosine dissimilarity between the first
+# and the second document from our crude collection
+dissimilarity(crude[[1]], crude[[2]], "cosine")
+
+# In the following example we create a term-document matrix from our working set of 70 news
+# articles (Data() accesses the slot holding the actual sparse matrix)
+# we combine our known acq and crude data sets to a single working set ws
+ws <- c(acq, crude)
+# create a term-document matrix from our working set
+# (Data() accesses the slot holding the actual sparse matrix)
+wsTDM <- Data(TermDocMatrix(ws))
+# and use the Euclidean distance metric as distance measure for hierarchical clustering with
+# Ward's minimum variance method of our 50 acq and 20 crude documents:
+wsHClust <- hclust(dist(wsTDM), method = "ward")
+
+```
+
+#### k-means clustering
+We perform a classical linear k-means clustering with k = 2 (we know that only two clusters is a reasonable value because we concatenated ourworking set of the two topic sets acq and crude)
+```{r}
+wsKMeans <- kmeans(wsTDM, 2)
+# and present the results in form of a confusion matrix
+wsReutersCluster <- c(rep("acq", 50), rep("crude", 20))
+cl_agreement(wsKMeans, as.cl_partition(wsReutersCluster), "diag")
+# Cross-agreements using maximal co-classification rate:
+#     [,1]
+# [1,] 0.7
+```
+
+### Simple text classification
+In contrast to clustering, where groups are unknown at the beginning, classification tries to
+put specific documents into groups known in advance.  
+We use the Spambase database from the UCI Machine Learning. We start with a training set with about 75 percent of the spam data set resulting in about 1360 spam and 2092 nonspam documents. In the same way we take the remaining 25 percent of the data set as fictive test sets
+
+```{r}
+train <- rbind(spam[1:1360, ], spam[1814:3905, ])
+# tag them as factors according to our know topics
+trainCl <- train[, "type"]
+
+test <- rbind(spam[1361:1813, ], spam[3906:4601, ])
+# store their original classification
+trueCl <- test[, "type"]
+```
+
+#### k-nearest neighbor classification
+
+we start the 1-nearest neighbor classification (deleting the original classification from
+column 58, which represents the type):
+
+```{r}
+knnCl <- knn(train[, -58], test[, -58], trainCl)
+```
+
+and obtain the following confusion matrix
+
+```{r}
+nnTable <- table("1-NN" = knnCl, Reuters = trueCl)
+# Reuters
+# 1-NN nonspam spam
+# nonspam 503 138
+# spam 193 315
+```
+
+the cross-agreement is
+
+```{r}
+sum(diag(nnTable))/nrow(test)
+# [1] 0.7119234
+```
+
+#### Support vector machine classification
+
+We used the same training and test documents. Based on the training data and its classification we train a support vector machine:
+```{r}
+ksvmTrain <- ksvm(type ~ ., data = train)
+```
+Then we classify the test set based on the created SVM
+```{r}
+svmCl <- predict(ksvmTrain, test[, -58])
+```
+which yields the following confusion matrix
+```{r}
+svmTable <- table(SVM = svmCl, Reuters = trueCl)
+```
+with the following cross agreement
+```{r}
+sum(diag(svmTable))/nrow(test)
+# 0.877
+```
+
+
+
+
+
+
+
