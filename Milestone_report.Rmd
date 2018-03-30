@@ -111,6 +111,41 @@ vs <- VectorSource(cleanData)
 corpus.sample <- VCorpus(vs, readerControl=list(readPlain, language=lang, load=TRUE))
 ```
 
+### Basics summaries of files
+
+
+```{r cache=TRUE}
+fileInformation <- function(filepath) {
+  size <- file.info(filepath)$size/1048576
+
+  conn <- file(filepath, "r")
+  fulltext <- readLines(conn, encoding="UTF-16LE")
+  nlines <- length(fulltext)
+  
+  maxline <- 0
+  for (i in 1:nlines) {
+    linelength <- nchar(fulltext[i])
+    if (linelength > maxline) { maxline <- linelength }
+  }
+  close(conn)
+  
+  infotext <- paste0("File: ", filepath, ", ",
+                     "size: ", sprintf("%.1f", size), " MB, ",
+                     "number of lines: ", nlines, ", ",
+                     "max line length: ", maxline, " characters")
+  
+  # create a list with object properties to access them
+  list(size=size, nlines=nlines, maxline=maxline, infotext=infotext)
+}
+
+blog_info <- fileInformation(paste0(raw_data_dir,"en_US.blogs.txt"))
+news_info <- fileInformation(paste0(raw_data_dir,"en_US.news.txt"))
+twit_info <- fileInformation(paste0(raw_data_dir,"en_US.twitter.txt"))
+
+blog_info$infotext
+news_info$infotext
+twit_info$infotext
+```
 
 ```{r echo=FALSE}
 
