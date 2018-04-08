@@ -1,0 +1,312 @@
+---
+title: "Task 4 - Prediction Model"
+author: "Ramiro Alvite Díaz"
+date: "1 de abril de 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+The goal of this exercise is to build and evaluate your first predictive model. You will use the n-gram and backoff models you built in previous tasks to build and evaluate your predictive model. The goal is to make the model efficient and accurate. 
+
+### Tasks to accomplish
+
+1. Build a predictive model based on the previous data modeling steps - you may combine the models in any way you think is appropriate.
+2. Evaluate the model for efficiency and accuracy - use timing software to evaluate the computational complexity of your model. Evaluate the model accuracy using different metrics like perplexity, accuracy at the first word, second word, and third word.
+
+### Questions to consider
+
+1. How does the model perform for different choices of the parameters and size of the model?
+2. How much does the model slow down for the performance you gain?
+3. Does perplexity correlate with the other measures of accuracy?
+4. Can you reduce the size of the model (number of parameters) without reducing performance?
+5. How do you evaluate whether your model is any good?
+6. Model performance metrics:
+    * Size: the amount of memory (physical RAM) required to run the model in R
+    * Runtime: The amount of time the algorithm takes to make a prediction given the acceptable input
+    * `object.size()`: this function reports the number of bytes that an R object occupies in memory
+    * `Rprof()`: this function runs the profiler in R that can be used to determine where bottlenecks in your function may exist. The profr package (available on CRAN) provides some additional tools for visualizing and summarizing profiling data.
+    + `gc()`: this function runs the garbage collector to retrieve unused RAM for R. In the process it tells you how much memory is currently being used by R.
+
+### Strategy
+
+* Model for the relationship between words
+    1. Build basic n-gram model
+    2. Build a model to handle unseen n-grams (words that does not appear in the corpora). See [backoff models](https://en.wikipedia.org/wiki/Katz%27s_back-off_model)
+* Use word frequencies to make your model smaller and more efficient
+* Efficiently store an n-gram model (Markov Chains)
+
+
+### Model building
+
+
+```{r echo= FALSE, message=FALSE}
+library(tm)
+library(tidytext)
+library(RWeka)
+library(dplyr)
+library(tidyr)
+library(reshape2)
+library(ggplot2)
+```
+
+
+```{r cache=TRUE}
+######## DATA LOAD #########################
+raw_data_dir <- "./data_raw/final/en_US/"
+samplingFile <- function(filename, prob) {
+    incon <- file(paste(raw_data_dir, "en_US.", filename, ".txt",sep=""),"r")
+    file <- readLines(incon)
+    # sampling by rbinom()
+    set.seed(123)
+    sample_file <- file[rbinom(n = length(file), size = 1, prob = prob) == 1]
+    close(incon)
+    
+    # Write out the sample file to the local file to save it
+    outCon <- file(paste(raw_data_dir, "sample_", filename, ".txt",sep=""), "w")
+    writeLines(sample_file, con = outCon)
+    close(outCon)
+}
+
+samplingFile("blogs", 1)
+samplingFile("news", 1)
+samplingFile("twitter", 1)
+
+# remove non-ASCII encoding
+text_file <- paste(raw_data_dir,"sample_news.txt",sep = "")
+conn <- conn <- file(text_file, "r")
+newsData <- readLines(conn)
+close(conn)
+
+text_file <- paste(raw_data_dir,"sample_blogs.txt",sep = "")
+conn <- conn <- file(text_file, "r")
+blogsData <- readLines(conn)
+close(conn)
+
+
+text_file <- paste(raw_data_dir,"sample_twitter.txt",sep = "")
+conn <- conn <- file(text_file, "r")
+twitterData <- readLines(conn)
+close(conn)
+
+
+encodingASCII <- function(inputData, print=FALSE){
+    inputData <- lapply(inputData, function(row) iconv(row, "latin1", "ASCII", sub="")) 
+    return(unlist(inputData))
+}
+
+cleanData = encodingASCII(paste(newsData, blogsData, twitterData))
+
+# create VCorpus
+lang = "en" 
+vs <- VectorSource(cleanData)
+corpus.sample <- VCorpus(vs, readerControl=list(readPlain, language=lang, load=TRUE))
+```
+
+
+```{r cache=TRUE}
+######## DATA PREPROCESSING #########################
+# to lowercase
+corpus.sample <- tm_map(corpus.sample, content_transformer(tolower))
+
+# remove URL
+removeURL <- function(x) gsub("http[^[:space:]]*", "", x)
+corpus.sample <- tm_map(corpus.sample, content_transformer(removeURL))
+
+# remove extra whitespaces
+corpus.sample <- tm_map(corpus.sample, stripWhitespace)
+# remove punctuations
+corpus.sample <- tm_map(corpus.sample, removePunctuation)
+# remove numbers
+corpus.sample <- tm_map(corpus.sample, removeNumbers)
+
+# remove anything other than English letters or space
+removeNoiseChars <- function(x) gsub("[^[:alpha:][:space:]]", "", x)
+corpus.sample <- tm_map(corpus.sample, content_transformer(removeNoiseChars))
+
+# stopword removal
+# corpus.sample <- tm_map(corpus.sample, removeWords, stopwords("english"))
+
+# stem
+corpus.sample <- tm_map(corpus.sample, stemDocument)
+```
+
+#### Build the word dictionary
+
+```{r cache=TRUE}
+######## 1-GRAM TOCKEN EXTRACTION #########################
+TDM <- TermDocumentMatrix(corpus.sample,control=list(wordLengths=c(1,Inf)))
+TDM <- removeSparseTerms(TDM, sparse = 0.999)
+
+# TDM to matrix
+m <- as.matrix(TDM)
+tdm_frequencies <- sort(rowSums(m), decreasing=TRUE)
+
+# matrix to dataframe of words and their frequencies
+tdm_frequencies <- as.data.frame(melt(tdm_frequencies))
+
+# manipulate df fields
+tdm_frequencies$word <- dimnames(tdm_frequencies)[[1]]
+tdm_frequencies$value <- as.integer(tdm_frequencies$value)
+
+# build the dictionary with terms wich freq is greater than percentil 10
+word_dict <- tdm_frequencies[tdm_frequencies$value > quantile(tdm_frequencies$value, N), ]
+
+
+head(word_dict)
+
+# unlink m matrix
+rm(m)
+```
+
+#### 2-gram tockens extraction
+
+The next step is to evaluate the most frequent two-grams (pairs of words that appear together). To construct the term-document matrix for two-grams the `NGramTokenizer()` function from the RWeka package is used as a control term to the DocumentTermMatrix function.
+
+```{r cache=TRUE}
+######## 2-GRAM TOCKEN EXTRACTION #########################
+BigramTokenizer <- function(x) NGramTokenizer(x, Weka_control(min = 2, max = 2))
+TDM2 <- TermDocumentMatrix(corpus.sample,control=list(wordLengths=c(1,Inf), tokenize = BigramTokenizer))
+TDM2 <- removeSparseTerms(TDM2, sparse = 0.999)
+
+# TDM2 to matrix
+m2 <- as.matrix(TDM2)
+TDM2_frequencies <- sort(rowSums(m2), decreasing=TRUE)
+
+# matrix to dataframe of words and their frequencies
+TDM2_frequencies <- as.data.frame(melt(TDM2_frequencies))
+
+# manipulate df fields
+TDM2_frequencies$word <- dimnames(TDM2_frequencies)[[1]]
+TDM2_frequencies$value <- as.integer(TDM2_frequencies$value)
+
+# build the dictionary with terms wich freq is greater than percentil 10
+word_dict_2gram <- TDM2_frequencies[TDM2_frequencies$value > quantile(TDM2_frequencies$value, N), ]
+
+# The most frequent terms
+head(word_dict_2gram$word)
+# The least frequent terms
+tail(word_dict_2gram)
+# unlink m matrix
+rm(m2)
+
+
+```
+
+```{r cache=TRUE}
+######## 3-GRAM TOCKEN EXTRACTION #########################
+BigramTokenizer <- function(x) NGramTokenizer(x, Weka_control(min = 3, max = 3))
+TDM3 <- TermDocumentMatrix(corpus.sample,control=list(wordLengths=c(1,Inf), tokenize = BigramTokenizer))
+TDM3 <- removeSparseTerms(TDM3, sparse = 0.9995)
+
+# TDM3 to matrix
+m3 <- as.matrix(TDM3)
+TDM3_frequencies <- sort(rowSums(m3), decreasing=TRUE)
+
+# matrix to dataframe of words and their frequencies
+TDM3_frequencies <- as.data.frame(melt(TDM3_frequencies))
+
+# manipulate df fields
+TDM3_frequencies$word <- dimnames(TDM3_frequencies)[[1]]
+TDM3_frequencies$value <- as.integer(TDM3_frequencies$value)
+
+# build the dictionary with terms wich freq is greater than percentil 10
+word_dict_3gram <- TDM3_frequencies[TDM3_frequencies$value > quantile(TDM3_frequencies$value, N), ]
+
+# The most frequent terms
+head(word_dict_3gram$word)
+# The least frequent terms
+tail(word_dict_3gram)
+# unlink m matrix
+rm(m3)
+
+
+```
+
+One important step is to determine what type of message is being written (news,blog,twitter) as one of the basic rules of machine learning is that you are likely to get good prediction results only if the data you train your algorithm on is of the same type as your test data (Source: Stanford NLP Course on Coursera)
+
+we can look at all the bi-gram starting by the word “my”. In a 1-gram prediction model, we could use the second word in the most frequent bi-gram as our prediction.
+
+```{r}
+predict_word_3_gram <- function(term, perc){
+    # @params:
+    # term: the first 2 term in the 3-gram
+    # perc: the percentile of frequency to use to subset
+    
+    # 1. filter the dictionary with the first input term
+    pred_2gram <- word_dict_3gram[grep(paste("*", term,"*",sep = ""), word_dict_3gram$word), ]
+    
+    # stop if input term is not found
+    if (nrow(pred_2gram) > 0){
+        # 2. filter the resulting subset with the most frequent 2-gram - greater than .95
+        pred_3gram <- pred_2gram[pred_2gram$value > quantile(pred_2gram$value, perc), ]
+        
+        # separate 3 gram to 3 cols ("word1", "word2", "word3")
+        out <- strsplit(as.character(pred_3gram$word),' ') 
+        do.call(rbind, out)
+        
+        pred_3gram <- data.frame(pred_3gram$word, pred_3gram$value, do.call(rbind, out))
+        colnames(pred_3gram) <- c("3gram","freq","word1","word2","word3")
+        
+        # fetch candidate terms
+        # if prediction returns +0 rows
+        if (nrow(pred_3gram) > 0){
+            pred_3gram
+        }
+        else {print(paste("no matches found for term:",term))}
+    
+        }    
+    else {stop("input term not found in dictionary")}
+    }
+
+predict_word_3_gram("me the", .20)
+
+predict_word_2_gram <- function(term, perc){
+    # @params:
+    # term: the first term in the 2-gram
+    # perc: the percentile of frequency to use to subset
+    
+    # 1. filter the dictionary with the first input term
+    pred_1gram <- word_dict_2gram[grep(paste("^", term," ",sep = ""), word_dict_2gram$word), ]
+    
+    # stop if input term is not found
+    if (nrow(pred_1gram) > 0){
+        # 2. filter the resulting subset with the most frequent 2-gram - greater than .95
+        pred_2gram <- pred_1gram[pred_1gram$value > quantile(pred_1gram$value, perc), ]
+        
+        # separate 2 gram to 2 cols ("word1", "word2")
+        out <- strsplit(as.character(pred_2gram$word),' ') 
+        do.call(rbind, out)
+        
+        pred_2gram <- data.frame(pred_2gram$word, pred_2gram$value, do.call(rbind, out))
+        colnames(pred_2gram) <- c("2gram","freq","word1","word2")
+        
+        # fetch candidate terms
+        # if prediction returns +0 rows
+        if (nrow(pred_2gram) > 0){
+            pred_2gram
+        }
+        else {print(paste("no matches found for term:",term))}
+    
+        }    
+    else {stop("input term not found in dictionary")}
+    } 
+     
+    
+    
+
+predict_word_2_gram("me", .20)
+
+```
+
+
+
+### References
+https://rpubs.com/BreaizhZut/MilesStone_NgramPrediction  
+http://rpubs.com/vruizext/text-prediction-app
+http://mliq.github.io/
+https://stackoverflow.com/questions/31316274/implementing-n-grams-for-next-word-prediction  
+
