@@ -71,9 +71,9 @@ samplingFile <- function(filename, prob) {
     close(outCon)
 }
 
-samplingFile("blogs", 1)
-samplingFile("news", 1)
-samplingFile("twitter", 1)
+samplingFile("blogs", .01)
+samplingFile("news", .01)
+samplingFile("twitter", .01)
 
 # remove non-ASCII encoding
 text_file <- paste(raw_data_dir,"sample_news.txt",sep = "")
@@ -98,7 +98,8 @@ encodingASCII <- function(inputData, print=FALSE){
     return(unlist(inputData))
 }
 
-cleanData = encodingASCII(paste(newsData, blogsData, twitterData))
+#cleanData = encodingASCII(paste(newsData, blogsData, twitterData))
+cleanData = paste(newsData, blogsData, twitterData)
 
 # create VCorpus
 lang = "en" 
@@ -150,10 +151,12 @@ tdm_frequencies <- as.data.frame(melt(tdm_frequencies))
 
 # manipulate df fields
 tdm_frequencies$word <- dimnames(tdm_frequencies)[[1]]
-tdm_frequencies$value <- as.integer(tdm_frequencies$value)
+tdm_frequencies$freq <- as.integer(tdm_frequencies$value)
+tdm_frequencies$prob <- tdm_frequencies$freq / sum(tdm_frequencies$freq)
 
 # build the dictionary with terms wich freq is greater than percentil 10
-word_dict <- tdm_frequencies[tdm_frequencies$value > quantile(tdm_frequencies$value, N), ]
+N <- .10
+word_dict <- tdm_frequencies[tdm_frequencies$freq > quantile(tdm_frequencies$freq, N), ]
 
 
 head(word_dict)
@@ -170,7 +173,7 @@ The next step is to evaluate the most frequent two-grams (pairs of words that ap
 ######## 2-GRAM TOCKEN EXTRACTION #########################
 BigramTokenizer <- function(x) NGramTokenizer(x, Weka_control(min = 2, max = 2))
 TDM2 <- TermDocumentMatrix(corpus.sample,control=list(wordLengths=c(1,Inf), tokenize = BigramTokenizer))
-TDM2 <- removeSparseTerms(TDM2, sparse = 0.999)
+TDM2 <- removeSparseTerms(TDM2, sparse = 0.995)
 
 # TDM2 to matrix
 m2 <- as.matrix(TDM2)
@@ -182,12 +185,14 @@ TDM2_frequencies <- as.data.frame(melt(TDM2_frequencies))
 # manipulate df fields
 TDM2_frequencies$word <- dimnames(TDM2_frequencies)[[1]]
 TDM2_frequencies$value <- as.integer(TDM2_frequencies$value)
+TDM2_frequencies$freq <- as.integer(TDM2_frequencies$value)
+TDM2_frequencies$prob <- TDM2_frequencies$freq / sum(TDM2_frequencies$freq)
 
 # build the dictionary with terms wich freq is greater than percentil 10
-word_dict_2gram <- TDM2_frequencies[TDM2_frequencies$value > quantile(TDM2_frequencies$value, N), ]
+word_dict_2gram <- TDM2_frequencies[TDM2_frequencies$freq > quantile(TDM2_frequencies$freq, N), ]
 
 # The most frequent terms
-head(word_dict_2gram$word)
+head(word_dict_2gram)
 # The least frequent terms
 tail(word_dict_2gram)
 # unlink m matrix
@@ -200,7 +205,7 @@ rm(m2)
 ######## 3-GRAM TOCKEN EXTRACTION #########################
 BigramTokenizer <- function(x) NGramTokenizer(x, Weka_control(min = 3, max = 3))
 TDM3 <- TermDocumentMatrix(corpus.sample,control=list(wordLengths=c(1,Inf), tokenize = BigramTokenizer))
-TDM3 <- removeSparseTerms(TDM3, sparse = 0.9995)
+TDM3 <- removeSparseTerms(TDM3, sparse = 0.995)
 
 # TDM3 to matrix
 m3 <- as.matrix(TDM3)
@@ -211,10 +216,13 @@ TDM3_frequencies <- as.data.frame(melt(TDM3_frequencies))
 
 # manipulate df fields
 TDM3_frequencies$word <- dimnames(TDM3_frequencies)[[1]]
-TDM3_frequencies$value <- as.integer(TDM3_frequencies$value)
+TDM3_frequencies$freq <- as.integer(TDM3_frequencies$value)
+TDM3_frequencies$prob <- TDM3_frequencies$freq / sum(TDM3_frequencies$freq)
+
+
 
 # build the dictionary with terms wich freq is greater than percentil 10
-word_dict_3gram <- TDM3_frequencies[TDM3_frequencies$value > quantile(TDM3_frequencies$value, N), ]
+word_dict_3gram <- TDM3_frequencies[TDM3_frequencies$freq > quantile(TDM3_frequencies$freq, N), ]
 
 # The most frequent terms
 head(word_dict_3gram$word)
@@ -226,7 +234,9 @@ rm(m3)
 
 ```
 
-One important step is to determine what type of message is being written (news,blog,twitter) as one of the basic rules of machine learning is that you are likely to get good prediction results only if the data you train your algorithm on is of the same type as your test data (Source: Stanford NLP Course on Coursera)
+One important step is to determine what type of message is being written (news,blog,twitter) as one of the basic rules of machine learning is that you are likely to get good prediction results only if the data you train your algorithm on is of the same type as your test data (Source: Stanford NLP Course on Coursera).  
+
+An n-gram model is a statistical model of language in which the previous n − 1 words are used to predict the next one. In language, however, each word is highly dependent on the previous context (dependent event). Therefore we need the connditional probability to make good predictions.
 
 we can look at all the bi-gram starting by the word “my”. In a 1-gram prediction model, we could use the second word in the most frequent bi-gram as our prediction.
 
@@ -306,7 +316,10 @@ predict_word_2_gram("me", .20)
 
 ### References
 https://rpubs.com/BreaizhZut/MilesStone_NgramPrediction  
-http://rpubs.com/vruizext/text-prediction-app
-http://mliq.github.io/
-https://stackoverflow.com/questions/31316274/implementing-n-grams-for-next-word-prediction  
+http://rpubs.com/vruizext/text-prediction-app  
+http://mliq.github.io/  
+https://stackoverflow.com/questions/31316274/implementing-n-grams-for-next-word-prediction
+https://www.mendeley.com/viewer/?fileId=50f093d3-494b-1077-019d-9e6fb83ee92b&documentId=8551c760-7a07-3203-85f7-faa735666f5d  
+
+
 
