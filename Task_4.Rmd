@@ -319,7 +319,11 @@ https://rpubs.com/BreaizhZut/MilesStone_NgramPrediction
 http://rpubs.com/vruizext/text-prediction-app  
 http://mliq.github.io/  
 https://stackoverflow.com/questions/31316274/implementing-n-grams-for-next-word-prediction
+<<<<<<< HEAD
 https://www.mendeley.com/viewer/?fileId=50f093d3-494b-1077-019d-9e6fb83ee92b&documentId=8551c760-7a07-3203-85f7-faa735666f5d  
 
+=======
+https://www.google.es/url?sa=t&rct=j&q=&esrc=s&source=web&cd=1&ved=0ahUKEwjLuc-99araAhXQERQKHSprDvEQFggnMAA&url=https%3A%2F%2Fenglish.boisestate.edu%2Fjohnfry%2Ffiles%2F2013%2F04%2Fbigram-2x2.pdf&usg=AOvVaw1ycv5gfN-DrDeHWOb4tBRX  
+>>>>>>> 1f09563ccbb02fe3af98bbb45b1ec0e97d6ead4d
 
 
