@@ -73,3 +73,10 @@ dtDfm <- data.table(ngram = featnames(myDfm), count = colSums(myDfm), key = "ngr
 # Store the total number of ngrams (features in quanteda terminology) for later use
 nfeats <- nfeat(myDfm)
 
+
+# https://rpubs.com/erodriguez/nlpquanteda
+
+
+
+
+

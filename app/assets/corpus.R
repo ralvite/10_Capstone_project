@@ -88,19 +88,59 @@ rm(ngram4)
 dict4 <- data.table(ngram = featnames(dfm4), count = colSums(dfm4), key = "ngram")
 rm(dfm4)
 
-predictWord <- function (dict,term) {
+
+
+# Prediction
+# ----------------------------------------
+
+# dts is a list of the different datatables where dts[[4]] refer to the dt 4-grams
+# dts is stored in app to call predictWord() function
+dts <- list(dict1,dict2,dict3,dict4)
+# dts[[4]]
+
+predictWord <- function (inputPhrase) {
+    # toDo: implementing Katz's Back-off
+    # @param: inputPhrase <- "once upon a"
+    # Searchs a inputPhrase in a dict
     # @params:
-    # term: the first n term in the n+1-gram dict
-    # ie: term = america; n+1-gram = dict2; predicted_word = "and"
+    # inputPhrase: the first n inputPhrase in the n+1-gram dict
+    # ie: inputPhrase = america; n+1-gram = dict2; predicted_word = "and"
     
-    # 1. filter the dictionary with the first input term
-    termMatches <- dict[ngram %like% paste("^", term, " ", sep = ""), ]
+    # 1. filter the dictionary with the first input inputPhrase
+    # convert input to lowercase
+    inputPhrase <- tolower(inputPhrase)
     
-    # 2. get the row with max counts
-    termMatches %>% filter(count == max(count))
+    inputPhraseMatches <- dict4[ngram %like% paste("^", inputPhrase, " ", sep = ""), ]
+    
+    if (nrow(inputPhraseMatches) > 0){
+        head( inputPhraseMatches %>% arrange(desc(count)), 4)
+    } else {
+        inputTerms <- unlist(strsplit(inputPhrase, " "))
+        
+        # get the n-1 gram and lookup in n-1 gram table
+        nextGram <- paste(inputTerms[-1], collapse = " ")
+        print(paste("no matches in 4-gram. searching 3-gram:", nextGram))
+        # dict3
+        inputPhraseMatches <- dict3[ngram %like% paste("^", nextGram, " ", sep = ""), ]
+        if (nrow(inputPhraseMatches) > 0){
+            head( inputPhraseMatches %>% arrange(desc(count)), 4)
+        } else {
+            # get the n-1 gram and lookup in n-1 gram table
+            inputTerms <- unlist(strsplit(nextGram, " "))
+            nextGram <- paste(inputTerms[-1], collapse = " ")
+            print(paste("no matches in 3-gram. searching 2-gram:", nextGram))
+            # dict2
+            inputPhraseMatches <- dict2[ngram %like% paste("^", nextGram, " ", sep = ""), ]
+            if (nrow(inputPhraseMatches) > 0){
+                head( inputPhraseMatches %>% arrange(desc(count)), 4)
+            } else { print(paste("no matches in 2-gram:", nextGram,". End"))  }   
+           
+        }
+        
+    }
 }
 
-predictWord(dict2, "america")
+predictWord("of Adam Sandler's")
 
 
 

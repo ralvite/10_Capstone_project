@@ -9,7 +9,7 @@ samplingFile <- function(filename, prob) {
     # create a sample file for a given probability
     
     # read raw files
-    incon <- file(paste(raw_data_dir, "en_US.", filename, ".txt",sep=""),"r")
+    incon <- file(paste(raw_data_dir, "en_US.", filename, ".txt",sep=""),"rb")
     file <- readLines(incon)
     
     # sampling by rbinom()
@@ -23,6 +23,6 @@ samplingFile <- function(filename, prob) {
     close(outCon)
 }
 
-samplingFile("blogs", .3)
-samplingFile("news", .3) # to skip incomplete final line found open in binary mode (rb)
-samplingFile("twitter", .3)
+samplingFile("blogs", .1)
+samplingFile("news", .1) # to skip incomplete final line found open in binary mode (rb)
+samplingFile("twitter", .1)
