@@ -55,8 +55,10 @@ library(ggplot2)
 
 
 ```{r cache=TRUE}
-######## DATA LOAD #########################
+
+######## DATASETS SAMPLING AND LOAD #########################
 raw_data_dir <- "./data_raw/final/en_US/"
+
 samplingFile <- function(filename, prob) {
     incon <- file(paste(raw_data_dir, "en_US.", filename, ".txt",sep=""),"r")
     file <- readLines(incon)

@@ -1,4 +1,7 @@
-library(quanteda)
+require(quanteda)
+require(data.table)
+require(dplyr)
+require(tm)
 
 # Adding two corpus together
 txt <- c(text1 = "This is $10 in 999 different ways,\n up and down; left and right!", 
@@ -64,5 +67,9 @@ textplot_wordcloud(myDfm, min.freq = 1, random.order = FALSE,
                    rot.per = .25, 
                    colors = RColorBrewer::brewer.pal(8,"Dark2"))
 
-
+# create a DataTable
+# (which is faster and more efficient than DataFrames) with 2 colums: the ngram and its count
+dtDfm <- data.table(ngram = featnames(myDfm), count = colSums(myDfm), key = "ngram")
+# Store the total number of ngrams (features in quanteda terminology) for later use
+nfeats <- nfeat(myDfm)
 
