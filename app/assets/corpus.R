@@ -58,7 +58,10 @@ makeTokens <- function(corpus_i, ngram = 1L) {
 
 # 1-gram
 ngram1 <- parallelizeTask(makeTokens, corpus_merge, 1)
-dfm1 <- parallelizeTask(dfm, ngram1, remove = stopwords("english") )
+dfm1 <- dfm(ngram1, remove = stopwords("english"))
+dfm1 <- dfm_select(dfm1, pattern = "[0-9]", selection = "remove", valuetype = "regex")
+dfm1 <- dfm_select(dfm1, pattern = "[^a-z]", selection = "remove", valuetype = "regex")
+# dfm1 <- parallelizeTask(dfm, ngram1, remove = stopwords("english") )
 rm(ngram1)
 # transform dfm to datatable (the dictionary)
 dict1 <- data.table(ngram = featnames(dfm1), count = colSums(dfm1), key = "ngram")
@@ -66,7 +69,11 @@ rm(dfm1)
 
 # 2-gram
 ngram2 <- parallelizeTask(makeTokens, corpus_merge, 2)
-dfm2 <- parallelizeTask(dfm, ngram2, remove = stopwords("english") )
+dfm2 <- dfm(ngram2, remove = stopwords("english"))
+# dfm2 <- parallelizeTask(dfm, ngram2, remove = stopwords("english") )
+# remove: numbers and not letters or spaces (gram limiter)
+dfm2 <- dfm_select(dfm2, pattern = "[0-9]", selection = "remove", valuetype = "regex")
+dfm2 <- dfm_select(dfm2, pattern = "[^a-z ]", selection = "remove", valuetype = "regex")
 rm(ngram2)
 # transform dfm to datatable (the dictionary)
 dict2 <- data.table(ngram = featnames(dfm2), count = colSums(dfm2), key = "ngram")
@@ -74,7 +81,10 @@ rm(dfm2)
 
 # 3-gram
 ngram3 <- parallelizeTask(makeTokens, corpus_merge, 3)
-dfm3 <- parallelizeTask(dfm, ngram3, remove = stopwords("english") )
+dfm3 <- dfm(ngram3, remove = stopwords("english"))
+# dfm3 <- parallelizeTask(dfm, ngram3, remove = stopwords("english") )
+dfm3 <- dfm_select(dfm3, pattern = "[0-9]", selection = "remove", valuetype = "regex")
+dfm3 <- dfm_select(dfm3, pattern = "[^a-z ]", selection = "remove", valuetype = "regex")
 rm(ngram3)
 # transform dfm to datatable (the dictionary)
 dict3 <- data.table(ngram = featnames(dfm3), count = colSums(dfm3), key = "ngram")
@@ -82,7 +92,10 @@ rm(dfm3)
 
 # 4-gram
 ngram4 <- parallelizeTask(makeTokens, corpus_merge, 4)
-dfm4 <- parallelizeTask(dfm, ngram4, remove = stopwords("english") )
+dfm4 <- dfm(ngram4, remove = stopwords("english"))
+# dfm4 <- parallelizeTask(dfm, ngram4, remove = stopwords("english") )
+dfm4 <- dfm_select(dfm4, pattern = "[0-9]", selection = "remove", valuetype = "regex")
+dfm4 <- dfm_select(dfm4, pattern = "[^a-z ]", selection = "remove", valuetype = "regex")
 rm(ngram4)
 # transform dfm to datatable (the dictionary)
 dict4 <- data.table(ngram = featnames(dfm4), count = colSums(dfm4), key = "ngram")
