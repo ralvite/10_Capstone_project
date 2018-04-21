@@ -2,6 +2,7 @@ require(quanteda)
 require(data.table)
 require(dplyr)
 require(tm)
+require(tidyr)
 
 
 raw_data_dir <- "./data_raw/final/en_US/"
@@ -56,6 +57,7 @@ makeTokens <- function(corpus_i, ngram = 1L) {
     )    
 }
 
+
 # 1-gram
 ngram1 <- parallelizeTask(makeTokens, corpus_merge, 1)
 dfm1 <- dfm(ngram1, remove = stopwords("english"))
@@ -101,6 +103,24 @@ rm(ngram4)
 dict4 <- data.table(ngram = featnames(dfm4), count = colSums(dfm4), key = "ngram")
 rm(dfm4)
 
+
+# Arranging dictionaries
+# ----------------------------------------
+
+arrange3GramDict <- function(dict){
+    dict[, c("w1", "w2", "lastTerm") := tstrsplit(ngram, " ", fixed=TRUE)]
+    dict[, c("firstTerms") := paste(w1,w2,sep = " ")]
+    select(dict,c("firstTerms","lastTerm","count"))    
+}
+
+dict3 <- arrange3GramDict(dict3)
+
+arrange2GramDict <- function(dict){
+    dict[, c("firstTerms", "lastTerm") := tstrsplit(ngram, " ", fixed=TRUE)]
+    select(dict,c("firstTerms","lastTerm","count"))    
+}
+
+dict2 <- arrange2GramDict(dict2)
 
 
 # Prediction
