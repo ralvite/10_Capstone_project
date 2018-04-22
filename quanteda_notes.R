@@ -33,23 +33,27 @@ kwic(myCorpus, "different", valuetype = "regex")
 # 1. Tokenizing texts
 # This produces an intermediate object, consisting of a list of tokens in the form of character vectors, 
 # where each element of the list corresponds to an input document.
-tokens(myCorpus
+grams <- tokens(myCorpus
        , remove_numbers = TRUE
-       ,  remove_punct = TRUE
+       , remove_punct = TRUE
+       , remove_twitter = TRUE
        # , what = "character"
-       , ngrams = 2:3
+       , ngrams = 2:2
        , concatenator = " "
 )
 
 # 2. Constructing a document-feature matrix
 # All of the options to tokens() can be passed to dfm()
 # See also dfm_trim() to reduce matrix sparcity based on min frequency
-myDfm <- dfm(myCorpus
+myDfm <- dfm(grams
              , remove = stopwords("english") # The option remove provides a list of tokens to be ignored
              # , stem = TRUE
-             , remove_punct = TRUE
+             # , remove_punct = TRUE
 )
 myDfm[, 1:5]
+
+myDfm_clean <- dfm_select(myDfm, "[a-zA-Z]", selection = "keep", valuetype = "regex")
+myDfm_dict <- data.table(ngram = featnames(myDfm_clean), count = colSums(myDfm_clean), key = "ngram")
 # Document-feature matrix of: 3 documents, 5 features (53.3% sparse).
 # 3 x 5 sparse Matrix of class "dfm"
 # features

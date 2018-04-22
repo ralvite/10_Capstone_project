@@ -123,20 +123,7 @@ arrange2GramDict <- function(dict){
 dict2 <- arrange2GramDict(dict2)
 
 
-# Katz Backoff with Good-Turing Discounting
-# ----------------------------------------
-source("./app/assets/calculateDiscount.R")
-
-# Calculate the discount column in dictionaries
-dict3 = createdictExtended(dict3)
-dict2 = createdictExtended(dict2)
-dict1 = createdictExtended(dict1)
-
-# Calculate the remaining probability (thanks to discounting...).
-dict3_leftOverProb = dict3[, .(leftoverprob=calcLeftOverProb(lastTerm, count, discount)), by=firstTerms]
-
-# We now have two important objects: dict3, dict3_leftOverProb
-# ...
+dict1 = rename(dict1, lastTerm = ngram)
 
 
 # Prediction
