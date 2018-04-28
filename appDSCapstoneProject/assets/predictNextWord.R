@@ -1,6 +1,9 @@
 library(stringr)
 library(data.table)
 
+dict2 <- readRDS(file="./data/dict2Data.rds")
+dict3 <- readRDS(file="./data/dict3Data.rds")
+
 ##########################################################################################################
 # This function is used to get the probability of a given text, using Katz Backoff (with Good-Turing Discounting).
 # Only consider the last 3 words.
@@ -10,32 +13,48 @@ library(data.table)
 # Output2: 0.4323
 # Thus, input2 has more chance to appear than input1. Statistically, it is more relevant to people.
 getPredictWordFrom3Gram = function(inputString){
-  # Preprocessing
-  # mylist = separateTerms(getLastTerms(inputString, num = 3))
-  # inFirstTerms3gram = mylist$firstTerms
-  # inLastTerm3gram = mylist$lastTerm
-  inFirstTerms3gram = getLastTerms(inputString, num = 2)
-  
-  oneGroupIn3Gram = dict3[firstTerms == inFirstTerms3gram]
-  
-  if (nrow(oneGroupIn3Gram) > 0){
-    # Algorithm here
-    oneRecordIn3Gram = dict3[firstTerms == inFirstTerms3gram]
-    if (nrow(oneRecordIn3Gram) > 0){
-      # We found one or more in 3-gram
-      # get the next terms (lastTerm column of 3-gram with highest probability "-count")
-      head(oneGroupIn3Gram[order(-count),lastTerm],4)
-      
-      ### We're done!
+    # Preprocessing
+    # mylist = separateTerms(getLastTerms(inputString, num = 3))
+    # inFirstTerms3gram = mylist$firstTerms
+    # inLastTerm3gram = mylist$lastTerm
+    inFirstTerms3gram = getLastTerms(inputString, num = 2)
+    
+    oneGroupIn3Gram = dict3[firstTerms == inFirstTerms3gram]
+    
+    if (nrow(oneGroupIn3Gram) > 0){
+        # Algorithm here
+        oneRecordIn3Gram = dict3[firstTerms == inFirstTerms3gram]
+        if (nrow(oneRecordIn3Gram) > 0){
+            # We found one or more in 3-gram
+            # get the next terms (lastTerm column of 3-gram with highest probability "-count")
+            nextWord = as.character(head(oneGroupIn3Gram[order(-count),lastTerm],5))
+            nextWord
+            
+            ### We're done!
+        }
+    } else {
+        
+        inFirstTerms2gram = getLastTerms(inputString, num = 1)
+        oneGroupIn2Gram = dict2[firstTerms == inFirstTerms2gram]
+        if (nrow(oneGroupIn2Gram) > 0){
+            # Algorithm here
+            oneRecordIn2Gram = dict2[firstTerms == inFirstTerms2gram]
+            if (nrow(oneRecordIn2Gram) > 0){
+                # We found one or more in 3-gram
+                # get the next terms (lastTerm column of 3-gram with highest probability "-count")
+                nextWord = as.character(head(oneGroupIn2Gram[order(-count),lastTerm],5))
+                nextWord
+                
+                ### We're done!
+            }
+        } else {
+            stop(sprintf("No options available"))      
+        }
+        
+        
     }
-  } else {
-    stop(sprintf("[%s] not found in the 3-gram model.", inFirstTerms3gram))
-    # The workaround could be:
-    # + Write another function in which we primarily use 2-gram with support from 1-gram.
-    # + Increase the corpus size so that the 3-gram can capture more diversity of words...
-  }
-  
-  
+    
+    
 }
 
 

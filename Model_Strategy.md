@@ -20,3 +20,5 @@ Part 2: Predicting Given a New Phrase
 * Find matches in all N-gram tables, discarding any that would predict a "stop word"
 * Using a Katz Backoff Model, assign probabilities and return the top predictions
 
+Part 3: [Assessing Accuracy of Classification Models](http://rpubs.com/mszczepaniak/classificationgoodness)
+

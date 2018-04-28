@@ -11,7 +11,7 @@ suppressPackageStartupMessages(c(
 
 shinyUI(navbarPage("Coursera Data Science Capstone", 
                    
-                   theme = shinytheme("slate"),
+                   theme = shinytheme("journal"),
                    
                    tabPanel("Next Word Prediction",
                             
@@ -20,18 +20,17 @@ shinyUI(navbarPage("Coursera Data Science Capstone",
                               column(3),
                               column(6,
                                      tags$div(textInput("text", 
-                                                        label = h3("Enter your text here:"),
+                                                        label = tags$span(style="color:grey",("Enter text:")),
                                                         value = ),
-                                              tags$span(style="color:grey",("Only English words are supported.")),
+                                              tags$span(style="color:grey",("Predicted next words:")),
                                               br(),
-                                              tags$hr(),
-                                              h4("The predicted next word:"),
                                               tags$span(style="color:darkred",
-                                                        tags$strong(tags$h3(textOutput("predictedWord")))),
+                                                        uiOutput("predictedWords")),
+                                                        # tags$strong(tags$h3(textOutput("predictedWord")))),
                                               br(),
-                                              tags$hr(),
-                                              h4("What you have entered:"),
-                                              tags$em(tags$h4(textOutput("enteredWords"))),
+                                              # tags$hr(),
+                                              # h4("What you have entered:"),
+                                              tags$em(tags$h4(textOutput("warning"))),
                                               align="center")
                               ),
                               column(3)
@@ -43,8 +42,8 @@ shinyUI(navbarPage("Coursera Data Science Capstone",
                             fluidRow(
                               column(2,
                                      p("")),
-                              # column(8,
-                              #        includeMarkdown("./about/about.md")),
+                              column(8,
+                                     includeMarkdown("./www/about.md")),
                               column(2,
                                      p(""))
                             )
