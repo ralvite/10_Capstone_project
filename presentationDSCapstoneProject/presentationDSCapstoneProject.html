@@ -158,6 +158,14 @@ P(w_n | w_1,w_2,\cdots,w_{n-1}) = \frac{c(w_1 \cdots w_n)}{c(w_1 \cdots w_{n-1})
 
 </article></slide><slide class=""><hgroup><h2>Prediction performance</h2></hgroup><article  id="prediction-performance" class="smaller ">
 
+<p>Test corpus: 275,000 lines / 56.5M words</p>
+
+<ul>
+<li>Cross-entropy: 3.137 (3-grams)</li>
+<li>Accuracy: 24.8% (3-grams)</li>
+<li>Average Speed performance: 22ms (per 3-gram query)</li>
+</ul>
+
 </article></slide><slide class=""><hgroup><h2>Text Prediction App</h2></hgroup><article  id="text-prediction-app" class="smaller ">
 
 <p>The application interface is quite simple: user types text in the input field labeled as &quot;Enter text&quot;. The application fetches the five next words predicted by the model as a select input, refreshing as user keeps on typing additional text.</p>
