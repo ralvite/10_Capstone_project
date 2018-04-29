@@ -38,5 +38,5 @@ The application interface is quite simple: user types text in the input field la
 
 * The application is hosted at [Shinyapps.io](https://ralvite.shinyapps.io/appdscapstoneproject/)
 * Source code can be found at [GitHub](https://github.com/ralvite/10_Capstone_project)
-* Pitch can be found at GitHub pages
+* Pitch can be found at [GitHub pages](https://ralvite.github.io/10_Capstone_project/presentationDSCapstoneProject/presentationDSCapstoneProject.html#1)
 
