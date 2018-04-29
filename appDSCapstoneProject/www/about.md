@@ -1,6 +1,6 @@
 ### Data Science Capstone Project
 
-This is a Capstone Project of Data Science Specialization of John Hopkins University in cooperation with [Swiftkey](https://swiftkey.com) 
+This is a Capstone Project of [Data Science Specialization of John Hopkins University](https://www.coursera.org/specializations/jhu-data-science) in cooperation with [Swiftkey](https://swiftkey.com)
 
 -------------
 
