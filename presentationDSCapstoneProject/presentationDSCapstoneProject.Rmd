@@ -51,6 +51,13 @@ All processing was done using a well-known R packages for text mining, mainly: `
 
 ## Prediction performance
 
+Test corpus: 275,000 lines / 56.5M words
+
+* Cross-entropy: 3.137 (3-grams)
+* Accuracy: 24.8% (3-grams)
+* Average Speed performance: 22ms (per 3-gram query)
+
+
 ## Text Prediction App
 
 The application interface is quite simple: user types text in the input field labeled as "Enter text". The application fetches the five next words predicted by the model as a select input, refreshing as user keeps on typing additional text.
